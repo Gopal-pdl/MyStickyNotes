@@ -1,6 +1,6 @@
 ﻿namespace MyStickyNotes
 {
-    partial class Form1
+    partial class GPTools
     {
         /// <summary>
         /// Required designer variable.
@@ -34,10 +34,10 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(523, 343);
-            this.Name = "Form1";
-            this.Text = "Form1";
-            this.Load += new System.EventHandler(this.Form1_Load);
+            this.ClientSize = new System.Drawing.Size(428, 343);
+            this.Name = "GPTools";
+            this.Text = "GPToolsm";
+            this.Load += new System.EventHandler(this.GPTools_Load);
             this.ResumeLayout(false);
 
         }
