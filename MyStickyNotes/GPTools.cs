@@ -10,12 +10,21 @@ namespace MyStickyNotes
     public partial class GPTools : Form
     {
         public const string RootFolderPath = @"D:\StickyNotes";
-        private ListBox savedFilesListBox;
+        private ListView savedFilesListView;
         private Panel shortcutsPanel;
         private List<string> loadedShortcuts = new List<string>();
         private TableLayoutPanel mainLayout;
         private FlowLayoutPanel buttonPanel;
         private int hoveredNoteIndex = -1;
+        private Panel sidebarPanel;
+        private Panel mainContentPanel;
+        private string currentRootFolder = RootFolderPath;
+
+        private Panel notePreviewPanel;
+        private TextBox notePreviewTextBox;
+        private Button togglePreviewButton;
+        private bool isPreviewVisible = false;
+
         public GPTools()
         {
             InitializeComponent();
@@ -23,30 +32,173 @@ namespace MyStickyNotes
 
         private void GPTools_Load(object sender, EventArgs e)
         {
-            // Set form properties for a modern look
+            // Set form properties
             this.BackColor = Color.White;
             this.Font = new Font("Segoe UI", 10F);
             this.Text = "Sticky Notes Tools";
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
-            this.MinimumSize = new Size(700, 500);
+            this.MinimumSize = new Size(900, 600);
 
-            // Header panel (add first!)
+            
+
            
 
-            // Main layout panel
-            mainLayout = new TableLayoutPanel
+            // Main layout: sidebar + main content
+            TableLayoutPanel mainLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = Color.White
+            };
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F)); // Sidebar width
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            this.Controls.Add(mainLayout);
+
+            // Sidebar panel
+            sidebarPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(245, 245, 245)
+            };
+            mainLayout.Controls.Add(sidebarPanel, 0, 0);
+
+            // Header panel
+            Panel headerPanel = new Panel
+            {
+                BackColor = Color.FromArgb(33, 150, 243),
+                Height = 50,
+                Dock = DockStyle.Top
+            };
+            Label headerLabel = new Label
+            {
+                Text = "Sticky Notes Tools",
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(20, 0, 0, 0)
+            };
+            headerPanel.Controls.Add(headerLabel);
+            this.Controls.Add(headerPanel);
+
+            // Main content panel
+            mainContentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
+            };
+            mainLayout.Controls.Add(mainContentPanel, 1, 0);
+
+            // Sidebar buttons
+            int btnHeight = 48;
+            int btnWidth = 160;
+            int btnTop = 30;
+
+            // Notes button (first)
+            Button notesButton = new Button
+            {
+                Text = "Notes",
+                Size = new Size(btnWidth, btnHeight),
+                Location = new Point(10, btnTop),
+                BackColor = Color.FromArgb(33, 150, 243),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
+            };
+            notesButton.FlatAppearance.BorderSize = 0;
+            notesButton.Click += (s, e2) => ShowNotesPanel();
+            sidebarPanel.Controls.Add(notesButton);
+
+            // Manage Shortcuts button (second)
+            Button manageShortcutsButton = new Button
+            {
+                Text = "Manage Shortcuts",
+                Size = new Size(btnWidth, btnHeight),
+                Location = new Point(10, btnTop + btnHeight + 10), // Directly after Notes
+                BackColor = Color.FromArgb(63, 81, 181),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
+            };
+            manageShortcutsButton.FlatAppearance.BorderSize = 0;
+            manageShortcutsButton.Click += ManageShortcutsButton_Click;
+            sidebarPanel.Controls.Add(manageShortcutsButton);
+
+            // Settings button (third)
+            Button settingsButton = new Button
+            {
+                Text = "Settings",
+                Size = new Size(btnWidth, btnHeight),
+                Location = new Point(10, btnTop + (btnHeight + 10) * 2), // After Manage Shortcuts
+                BackColor = Color.FromArgb(120, 144, 156),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
+            };
+            settingsButton.FlatAppearance.BorderSize = 0;
+            settingsButton.Click += (s, e2) => ShowSettingsPanel();
+            sidebarPanel.Controls.Add(settingsButton);
+
+
+
+            // Add more sidebar buttons as needed...
+
+            // Ensure the root folder exists
+            if (!Directory.Exists(RootFolderPath))
+            {
+                Directory.CreateDirectory(RootFolderPath);
+            }
+
+            // Show notes panel by default
+            ShowNotesPanel();
+
+            // Shortcuts panel (static, always at bottom)
+            shortcutsPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 80,
+                AutoScroll = true,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White
+            };
+            shortcutsPanel.Name = "shortcutsPanel";
+            this.Controls.Add(shortcutsPanel);
+
+            // Load shortcuts after the panel is created
+            LoadShortcutsFromStorage();
+        }
+
+
+        private void ManageShortcutsButton_Click(object sender, EventArgs e)
+        {
+            using (var selector = new DesktopShortcutSelector())
+            {
+                if (selector.ShowDialog() == DialogResult.OK)
+                {
+                    LoadShortcutsFromStorage();
+                }
+            }
+        }
+
+
+
+        private void ShowNotesPanel()
+        {
+            mainContentPanel.Controls.Clear();
+
+            // TableLayoutPanel for button panel and notes list
+            var notesLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 BackColor = Color.White
             };
-            // Set a fixed height for the button row
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F)); // Buttons row: 60px
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 70F));  // Notes list
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));  // Shortcuts panel
-            this.Controls.Add(mainLayout);
+            notesLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F)); // Button panel height
+            notesLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Notes list fills rest
 
             // Button panel (responsive)
             buttonPanel = new FlowLayoutPanel
@@ -54,7 +206,6 @@ namespace MyStickyNotes
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = false,
-                MinimumSize = new Size(0, 60),
                 Height = 60,
                 Padding = new Padding(10, 10, 10, 10),
                 BackColor = Color.White
@@ -95,7 +246,7 @@ namespace MyStickyNotes
             {
                 Text = "Delete Note",
                 Size = new Size(120, 36),
-                BackColor = Color.FromArgb(244, 67, 54), // Red color
+                BackColor = Color.FromArgb(244, 67, 54),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
@@ -105,94 +256,197 @@ namespace MyStickyNotes
             deleteNoteButton.Click += DeleteNoteButton_Click;
             buttonPanel.Controls.Add(deleteNoteButton);
 
-            // Add Shortcut button
-            Button addShortcutButton = new Button
-            {
-                Text = "Add Shortcut",
-                Size = new Size(120, 36),
-                BackColor = Color.FromArgb(33, 150, 243),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Margin = new Padding(0, 0, 10, 0)
-            };
-            addShortcutButton.FlatAppearance.BorderSize = 0;
-            addShortcutButton.Click += AddShortcutButton_Click;
-            buttonPanel.Controls.Add(addShortcutButton);
+            notesLayout.Controls.Add(buttonPanel, 0, 0);
 
-            // Edit Shortcuts button
-            Button editShortcutsButton = new Button
+            // ListView for saved files
+            savedFilesListView = new ListView
             {
-                Text = "Edit Shortcuts",
-                Size = new Size(120, 36),
-                BackColor = Color.FromArgb(121, 85, 72), // Brownish color
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Margin = new Padding(0, 0, 10, 0)
-            };
-            editShortcutsButton.FlatAppearance.BorderSize = 0;
-            editShortcutsButton.Click += EditShortcutsButton_Click;
-            buttonPanel.Controls.Add(editShortcutsButton);
-
-
-            mainLayout.Controls.Add(buttonPanel, 0, 0);
-
-            Panel headerPanel = new Panel
-            {
-                BackColor = Color.FromArgb(33, 150, 243),
-                Height = 50,
-                Dock = DockStyle.Top
-            };
-            Label headerLabel = new Label
-            {
-                Text = "Sticky Notes Tools",
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
-                Padding = new Padding(20, 0, 0, 0)
+                View = View.Details,
+                FullRowSelect = true,
+                HeaderStyle = ColumnHeaderStyle.None,
+                Font = new Font("Segoe UI", 12F),
+                BorderStyle = BorderStyle.FixedSingle,
+                HideSelection = false,
+                MultiSelect = false
             };
-            headerPanel.Controls.Add(headerLabel);
-            this.Controls.Add(headerPanel);
-            // ListBox for saved files
-            savedFilesListBox = new ListBox
+            savedFilesListView.Columns.Add("Note Name", -2, HorizontalAlignment.Left);
+            savedFilesListView.DoubleClick += SavedFilesListView_DoubleClick;
+            savedFilesListView.KeyDown += SavedFilesListView_KeyDown;
+            savedFilesListView.SelectedIndexChanged += SavedFilesListView_SelectedIndexChanged;
+            //savedFilesListView.SelectedIndexChanged += SavedFilesListView_SelectedIndexChanged;
+            notesLayout.Controls.Add(savedFilesListView, 0, 1);
+
+            // Preview panel (hidden by default)
+            notePreviewPanel = new Panel
             {
+                Dock = DockStyle.Right,
+                Width = 250,
+                BackColor = Color.FromArgb(250, 250, 250),
+                BorderStyle = BorderStyle.FixedSingle,
+                Visible = false // Hidden initially
+            };
+
+            // Preview textbox (read-only)
+            notePreviewTextBox = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.FixedSingle
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                ScrollBars = ScrollBars.Vertical
             };
-            savedFilesListBox.DoubleClick += SavedFilesListBox_DoubleClick;
-            mainLayout.Controls.Add(savedFilesListBox, 0, 1);
-            savedFilesListBox.DrawMode = DrawMode.OwnerDrawFixed;
-            savedFilesListBox.DrawItem += SavedFilesListBox_DrawItem;
-            savedFilesListBox.MouseMove += SavedFilesListBox_MouseMove;
-            savedFilesListBox.MouseLeave += SavedFilesListBox_MouseLeave;
+            notePreviewPanel.Controls.Add(notePreviewTextBox);
 
-            // Panel to hold shortcut buttons
-            shortcutsPanel = new Panel
+            // Toggle button
+            togglePreviewButton = new Button
             {
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.White
+                Text = "Show Preview ▶",
+                Width = 120,
+                Height = 30,
+                Dock = DockStyle.Right,
+                BackColor = Color.LightGray,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 10, 0)
             };
-            shortcutsPanel.Name = "shortcutsPanel";
-            mainLayout.Controls.Add(shortcutsPanel, 0, 2);
+            togglePreviewButton.FlatAppearance.BorderSize = 0;
+            togglePreviewButton.Click += TogglePreviewButton_Click;
 
-            // Ensure the root folder exists
-            if (!Directory.Exists(RootFolderPath))
-            {
-                Directory.CreateDirectory(RootFolderPath);
-            }
+            // Add the toggle button to the notesLayout (top right of the button panel)
+            buttonPanel.Controls.Add(togglePreviewButton);
 
-            // Load existing notes into the ListBox
+            // Add the preview panel to mainContentPanel (after notesLayout)
+            // Add the preview panel to mainContentPanel (before notesLayout)
+            mainContentPanel.Controls.Add(notePreviewPanel);
+            mainContentPanel.Controls.Add(notesLayout);
+
+
+            // Load notes
             LoadSavedNotes();
-
-            // Load shortcuts after the panel is created
-            LoadShortcutsFromStorage();
         }
+
+        private void SavedFilesListView_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (savedFilesListView.SelectedItems.Count > 0)
+            {
+                string fileName = savedFilesListView.SelectedItems[0].Text;
+                string filePath = Path.Combine(RootFolderPath, fileName);
+                if (System.IO.File.Exists(filePath))
+                {
+                    notePreviewTextBox.Text = System.IO.File.ReadAllText(filePath);
+                }
+                else
+                {
+                    notePreviewTextBox.Text = "";
+                }
+            }
+            else
+            {
+                notePreviewTextBox.Text = "";
+            }
+        }
+
+
+        private void TogglePreviewButton_Click(object sender, EventArgs e)
+        {
+            isPreviewVisible = !isPreviewVisible;
+            notePreviewPanel.Visible = isPreviewVisible;
+            togglePreviewButton.Text = isPreviewVisible ? "Hide Preview ◀" : "Show Preview ▶";
+        }
+
+
+
+        private void SavedFilesListView_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Delete)
+            {
+                DeleteNoteButton_Click(sender, EventArgs.Empty);
+                e.Handled = true;
+            }
+        }
+
+
+        private void SavedFilesListBox_MeasureItem(object sender, MeasureItemEventArgs e)
+        {
+            // Set the item height to fit the font and padding
+            e.ItemHeight = 36; // Should match your DrawItem logic
+        }
+
+
+       private void ShowSettingsPanel()
+{
+    mainContentPanel.Controls.Clear();
+
+    Label settingsLabel = new Label
+    {
+        Text = "Settings",
+        Dock = DockStyle.Top,
+        Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+        ForeColor = Color.Gray,
+        Height = 40,
+        TextAlign = ContentAlignment.MiddleLeft,
+        Padding = new Padding(10, 20, 0, 0)
+    };
+    mainContentPanel.Controls.Add(settingsLabel);
+
+    Label folderLabel = new Label
+    {
+        Text = "Notes Folder:",
+        Dock = DockStyle.Top,
+        Font = new Font("Segoe UI", 11F, FontStyle.Regular),
+        Height = 30,
+        Padding = new Padding(10, 10, 0, 0)
+    };
+    mainContentPanel.Controls.Add(folderLabel);
+
+    TextBox folderPathBox = new TextBox
+    {
+        Text = currentRootFolder,
+        Dock = DockStyle.Top,
+        ReadOnly = true,
+        Font = new Font("Segoe UI", 10F),
+        Height = 28,
+        Margin = new Padding(10, 0, 10, 0)
+    };
+    mainContentPanel.Controls.Add(folderPathBox);
+
+    Button changeFolderButton = new Button
+    {
+        Text = "Change Folder...",
+        Dock = DockStyle.Top,
+        Height = 32,
+        Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+        BackColor = Color.FromArgb(33, 150, 243),
+        ForeColor = Color.White,
+        FlatStyle = FlatStyle.Flat,
+        Margin = new Padding(10, 10, 10, 0)
+    };
+    changeFolderButton.FlatAppearance.BorderSize = 0;
+    mainContentPanel.Controls.Add(changeFolderButton);
+
+    changeFolderButton.Click += (s, e) =>
+    {
+        using (var dialog = new FolderBrowserDialog())
+        {
+            dialog.Description = "Select a folder to save notes";
+            dialog.SelectedPath = currentRootFolder;
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                currentRootFolder = dialog.SelectedPath;
+                folderPathBox.Text = currentRootFolder;
+                if (!Directory.Exists(currentRootFolder))
+                {
+                    Directory.CreateDirectory(currentRootFolder);
+                }
+                LoadSavedNotes();
+            }
+        }
+    };
+}
+
 
 
 
@@ -287,45 +541,91 @@ namespace MyStickyNotes
             }
         }
 
-        private void SavedFilesListBox_DrawItem(object sender, DrawItemEventArgs e)
-        {
-            if (e.Index < 0 || e.Index >= savedFilesListBox.Items.Count)
-                return;
+        //private void SavedFilesListBox_DrawItem(object sender, DrawItemEventArgs e)
+        //{
+        //    if (e.Index < 0 || e.Index >= savedFilesListBox.Items.Count)
+        //        return;
 
-            bool isHovered = (e.Index == hoveredNoteIndex);
-            Color backColor = isHovered ? Color.FromArgb(232, 240, 254) : Color.White;
-            Color textColor = isHovered ? Color.FromArgb(33, 150, 243) : Color.Black;
+        //    bool isHovered = (e.Index == hoveredNoteIndex);
+        //    bool isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
 
-            using (SolidBrush backgroundBrush = new SolidBrush(backColor))
-            using (SolidBrush textBrush = new SolidBrush(textColor))
-            {
-                e.Graphics.FillRectangle(backgroundBrush, e.Bounds);
-                string text = savedFilesListBox.Items[e.Index].ToString();
-                e.Graphics.DrawString(text, e.Font, textBrush, e.Bounds.Left + 4, e.Bounds.Top + 2);
-            }
+        //    Color backColor;
+        //    Color textColor;
 
-            // Draw focus rectangle if needed
-            e.DrawFocusRectangle();
-        }
+        //    if (isSelected)
+        //    {
+        //        backColor = Color.FromArgb(204, 228, 247); // Windows selection blue
+        //        textColor = Color.Black;
+        //    }
+        //    else if (isHovered)
+        //    {
+        //        backColor = Color.FromArgb(232, 240, 254); // Light hover blue
+        //        textColor = Color.FromArgb(33, 150, 243);
+        //    }
+        //    else
+        //    {
+        //        backColor = Color.White;
+        //        textColor = Color.Black;
+        //    }
 
-        private void SavedFilesListBox_MouseMove(object sender, MouseEventArgs e)
-        {
-            int index = savedFilesListBox.IndexFromPoint(e.Location);
-            if (index != hoveredNoteIndex)
-            {
-                hoveredNoteIndex = index;
-                savedFilesListBox.Invalidate();
-            }
-        }
+        //    // Fill background
+        //    using (SolidBrush backgroundBrush = new SolidBrush(backColor))
+        //    {
+        //        e.Graphics.FillRectangle(backgroundBrush, e.Bounds);
+        //    }
 
-        private void SavedFilesListBox_MouseLeave(object sender, EventArgs e)
-        {
-            if (hoveredNoteIndex != -1)
-            {
-                hoveredNoteIndex = -1;
-                savedFilesListBox.Invalidate();
-            }
-        }
+        //    // Add padding (ensure it fits within ItemHeight)
+        //    int paddingLeft = 12;
+        //    int paddingTop = 8;
+        //    Rectangle textRect = new Rectangle(
+        //        e.Bounds.Left + paddingLeft,
+        //        e.Bounds.Top + paddingTop,
+        //        e.Bounds.Width - paddingLeft * 2,
+        //        e.Bounds.Height - paddingTop * 2
+        //    );
+
+        //    // Draw text (Windows style)
+        //    TextRenderer.DrawText(
+        //        e.Graphics,
+        //        savedFilesListBox.Items[e.Index].ToString(),
+        //        e.Font,
+        //        textRect,
+        //        textColor,
+        //        TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis
+        //    );
+
+        //    // Draw subtle bottom border for separation
+        //    using (Pen borderPen = new Pen(Color.FromArgb(230, 230, 230)))
+        //    {
+        //        e.Graphics.DrawLine(borderPen, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+        //    }
+
+        //    // Draw focus rectangle if needed
+        //    if ((e.State & DrawItemState.Focus) == DrawItemState.Focus)
+        //        e.DrawFocusRectangle();
+        //}
+
+
+
+
+        //private void SavedFilesListBox_MouseMove(object sender, MouseEventArgs e)
+        //{
+        //    int index = savedFilesListBox.IndexFromPoint(e.Location);
+        //    if (index != hoveredNoteIndex)
+        //    {
+        //        hoveredNoteIndex = index;
+        //        savedFilesListBox.Invalidate();
+        //    }
+        //}
+
+        //private void SavedFilesListBox_MouseLeave(object sender, EventArgs e)
+        //{
+        //    if (hoveredNoteIndex != -1)
+        //    {
+        //        hoveredNoteIndex = -1;
+        //        savedFilesListBox.Invalidate();
+        //    }
+        //}
 
 
 
@@ -383,21 +683,29 @@ namespace MyStickyNotes
 
         private void LoadSavedNotes()
         {
-            savedFilesListBox.Items.Clear();
+            if (savedFilesListView == null)
+                return;
+
+            savedFilesListView.Items.Clear();
             if (Directory.Exists(RootFolderPath))
             {
                 var files = Directory.GetFiles(RootFolderPath, "*.txt");
                 foreach (var file in files)
                 {
-                    savedFilesListBox.Items.Add(Path.GetFileName(file));
+                    savedFilesListView.Items.Add(new ListViewItem(Path.GetFileName(file)));
                 }
             }
+            // Auto-size the column to fit content
+            if (savedFilesListView.Columns.Count > 0)
+                savedFilesListView.Columns[0].Width = -2;
         }
 
-        private void SavedFilesListBox_DoubleClick(object sender, EventArgs e)
+
+        private void SavedFilesListView_DoubleClick(object sender, EventArgs e)
         {
-            if (savedFilesListBox.SelectedItem is string fileName)
+            if (savedFilesListView.SelectedItems.Count > 0)
             {
+                string fileName = savedFilesListView.SelectedItems[0].Text;
                 string filePath = Path.Combine(RootFolderPath, fileName);
                 if (System.IO.File.Exists(filePath))
                 {
@@ -408,10 +716,13 @@ namespace MyStickyNotes
         }
 
 
+
+
         private void EditFileNameButton_Click(object sender, EventArgs e)
         {
-            if (savedFilesListBox.SelectedItem is string selectedFileName)
+            if (savedFilesListView.SelectedItems.Count > 0)
             {
+                string selectedFileName = savedFilesListView.SelectedItems[0].Text;
                 string oldFilePath = Path.Combine(RootFolderPath, selectedFileName);
 
                 if (System.IO.File.Exists(oldFilePath))
@@ -425,7 +736,7 @@ namespace MyStickyNotes
                         if (!System.IO.File.Exists(newFilePath))
                         {
                             System.IO.File.Move(oldFilePath, newFilePath);
-                            LoadSavedNotes(); // Refresh the ListBox
+                            LoadSavedNotes(); // Refresh the ListView
                         }
                         else
                         {
@@ -441,10 +752,13 @@ namespace MyStickyNotes
         }
 
 
+
+
         private void DeleteNoteButton_Click(object sender, EventArgs e)
         {
-            if (savedFilesListBox.SelectedItem is string selectedFileName)
+            if (savedFilesListView.SelectedItems.Count > 0)
             {
+                string selectedFileName = savedFilesListView.SelectedItems[0].Text;
                 string filePath = Path.Combine(RootFolderPath, selectedFileName);
 
                 if (System.IO.File.Exists(filePath))
@@ -474,6 +788,7 @@ namespace MyStickyNotes
                 MessageBox.Show("Please select a note to delete.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+
 
 
 
