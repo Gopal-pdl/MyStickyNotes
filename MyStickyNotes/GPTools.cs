@@ -15,6 +15,7 @@ namespace MyStickyNotes
         private List<string> loadedShortcuts = new List<string>();
         private TableLayoutPanel mainLayout;
         private FlowLayoutPanel buttonPanel;
+        private int hoveredNoteIndex = -1;
         public GPTools()
         {
             InitializeComponent();
@@ -89,6 +90,21 @@ namespace MyStickyNotes
             editFileNameButton.Click += EditFileNameButton_Click;
             buttonPanel.Controls.Add(editFileNameButton);
 
+            // Delete Note button
+            Button deleteNoteButton = new Button
+            {
+                Text = "Delete Note",
+                Size = new Size(120, 36),
+                BackColor = Color.FromArgb(244, 67, 54), // Red color
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 10, 0)
+            };
+            deleteNoteButton.FlatAppearance.BorderSize = 0;
+            deleteNoteButton.Click += DeleteNoteButton_Click;
+            buttonPanel.Controls.Add(deleteNoteButton);
+
             // Add Shortcut button
             Button addShortcutButton = new Button
             {
@@ -103,6 +119,22 @@ namespace MyStickyNotes
             addShortcutButton.FlatAppearance.BorderSize = 0;
             addShortcutButton.Click += AddShortcutButton_Click;
             buttonPanel.Controls.Add(addShortcutButton);
+
+            // Edit Shortcuts button
+            Button editShortcutsButton = new Button
+            {
+                Text = "Edit Shortcuts",
+                Size = new Size(120, 36),
+                BackColor = Color.FromArgb(121, 85, 72), // Brownish color
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 10, 0)
+            };
+            editShortcutsButton.FlatAppearance.BorderSize = 0;
+            editShortcutsButton.Click += EditShortcutsButton_Click;
+            buttonPanel.Controls.Add(editShortcutsButton);
+
 
             mainLayout.Controls.Add(buttonPanel, 0, 0);
 
@@ -133,6 +165,10 @@ namespace MyStickyNotes
             };
             savedFilesListBox.DoubleClick += SavedFilesListBox_DoubleClick;
             mainLayout.Controls.Add(savedFilesListBox, 0, 1);
+            savedFilesListBox.DrawMode = DrawMode.OwnerDrawFixed;
+            savedFilesListBox.DrawItem += SavedFilesListBox_DrawItem;
+            savedFilesListBox.MouseMove += SavedFilesListBox_MouseMove;
+            savedFilesListBox.MouseLeave += SavedFilesListBox_MouseLeave;
 
             // Panel to hold shortcut buttons
             shortcutsPanel = new Panel
@@ -251,6 +287,45 @@ namespace MyStickyNotes
             }
         }
 
+        private void SavedFilesListBox_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0 || e.Index >= savedFilesListBox.Items.Count)
+                return;
+
+            bool isHovered = (e.Index == hoveredNoteIndex);
+            Color backColor = isHovered ? Color.FromArgb(232, 240, 254) : Color.White;
+            Color textColor = isHovered ? Color.FromArgb(33, 150, 243) : Color.Black;
+
+            using (SolidBrush backgroundBrush = new SolidBrush(backColor))
+            using (SolidBrush textBrush = new SolidBrush(textColor))
+            {
+                e.Graphics.FillRectangle(backgroundBrush, e.Bounds);
+                string text = savedFilesListBox.Items[e.Index].ToString();
+                e.Graphics.DrawString(text, e.Font, textBrush, e.Bounds.Left + 4, e.Bounds.Top + 2);
+            }
+
+            // Draw focus rectangle if needed
+            e.DrawFocusRectangle();
+        }
+
+        private void SavedFilesListBox_MouseMove(object sender, MouseEventArgs e)
+        {
+            int index = savedFilesListBox.IndexFromPoint(e.Location);
+            if (index != hoveredNoteIndex)
+            {
+                hoveredNoteIndex = index;
+                savedFilesListBox.Invalidate();
+            }
+        }
+
+        private void SavedFilesListBox_MouseLeave(object sender, EventArgs e)
+        {
+            if (hoveredNoteIndex != -1)
+            {
+                hoveredNoteIndex = -1;
+                savedFilesListBox.Invalidate();
+            }
+        }
 
 
 
@@ -268,6 +343,18 @@ namespace MyStickyNotes
                 }
             }
         }
+
+        private void EditShortcutsButton_Click(object sender, EventArgs e)
+        {
+            using (var selector = new DesktopShortcutSelector())
+            {
+                if (selector.ShowDialog() == DialogResult.OK)
+                {
+                    LoadShortcutsFromStorage();
+                }
+            }
+        }
+
 
 
         private void AddNoteButton_Click(object sender, EventArgs e)
@@ -352,6 +439,43 @@ namespace MyStickyNotes
                 MessageBox.Show("Please select a file to rename.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+
+
+        private void DeleteNoteButton_Click(object sender, EventArgs e)
+        {
+            if (savedFilesListBox.SelectedItem is string selectedFileName)
+            {
+                string filePath = Path.Combine(RootFolderPath, selectedFileName);
+
+                if (System.IO.File.Exists(filePath))
+                {
+                    var result = MessageBox.Show(
+                        $"Are you sure you want to delete '{selectedFileName}'?",
+                        "Delete Note",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            System.IO.File.Delete(filePath);
+                            LoadSavedNotes();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Failed to delete note: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Please select a note to delete.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+
 
         private string PromptForNewFileName(string currentFileName)
         {
