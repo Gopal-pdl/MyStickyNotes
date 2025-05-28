@@ -25,6 +25,10 @@ namespace MyStickyNotes
         private Button togglePreviewButton;
         private bool isPreviewVisible = false;
 
+        private Panel todoPanel;
+        private ListBox todoListBox;
+        private TextBox todoInputBox;
+
         public GPTools()
         {
             InitializeComponent();
@@ -127,12 +131,28 @@ namespace MyStickyNotes
             manageShortcutsButton.Click += ManageShortcutsButton_Click;
             sidebarPanel.Controls.Add(manageShortcutsButton);
 
+            // ToDo button (third, before Settings)
+            Button todoButton = new Button
+            {
+                Text = "ToDo",
+                Size = new Size(btnWidth, btnHeight),
+                Location = new Point(10, btnTop + (btnHeight + 10) * 2), // After Manage Shortcuts
+                BackColor = Color.FromArgb(76, 175, 80),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
+            };
+            todoButton.FlatAppearance.BorderSize = 0;
+            todoButton.Click += TodoButton_Click;
+            sidebarPanel.Controls.Add(todoButton);
+
+
             // Settings button (third)
             Button settingsButton = new Button
             {
                 Text = "Settings",
                 Size = new Size(btnWidth, btnHeight),
-                Location = new Point(10, btnTop + (btnHeight + 10) * 2), // After Manage Shortcuts
+                Location = new Point(10, btnTop + (btnHeight + 10) * 3), // After Manage Shortcuts
                 BackColor = Color.FromArgb(120, 144, 156),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -169,6 +189,139 @@ namespace MyStickyNotes
 
             // Load shortcuts after the panel is created
             LoadShortcutsFromStorage();
+        }
+
+        private void TodoButton_Click(object sender, EventArgs e)
+        {
+            ShowTodoPanel();
+        }
+
+
+        private void ShowTodoPanel()
+        {
+            mainContentPanel.Controls.Clear();
+
+            // Main ToDo panel
+            todoPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
+            };
+
+            
+
+            // ListBox for ToDo items
+            todoListBox = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 12F),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            todoPanel.Controls.Add(todoListBox);
+
+            Label titleLabel = new Label
+            {
+                Text = "ToDo List",
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                Dock = DockStyle.Top,
+                Height = 48,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(10, 10, 0, 0)
+            };
+            todoPanel.Controls.Add(titleLabel);
+
+            // Panel for input and add button
+            Panel inputPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 48,
+                BackColor = Color.White
+            };
+
+            todoInputBox = new TextBox
+            {
+                Font = new Font("Segoe UI", 11F),
+                Width = 300,
+                Location = new Point(10, 10)
+            };
+            inputPanel.Controls.Add(todoInputBox);
+
+            Button addButton = new Button
+            {
+                Text = "Add",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                BackColor = Color.FromArgb(76, 175, 80),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(320, 8),
+                Size = new Size(80, 32)
+            };
+            addButton.FlatAppearance.BorderSize = 0;
+            addButton.Click += AddTodoButton_Click;
+            inputPanel.Controls.Add(addButton);
+
+            Button removeButton = new Button
+            {
+                Text = "Remove",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                BackColor = Color.FromArgb(244, 67, 54),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(410, 8),
+                Size = new Size(80, 32)
+            };
+            removeButton.FlatAppearance.BorderSize = 0;
+            removeButton.Click += RemoveTodoButton_Click;
+            inputPanel.Controls.Add(removeButton);
+
+            todoPanel.Controls.Add(inputPanel);
+
+            mainContentPanel.Controls.Add(todoPanel);
+
+            LoadTodoItems();
+        }
+
+        private void AddTodoButton_Click(object sender, EventArgs e)
+        {
+            string text = todoInputBox.Text.Trim();
+            if (!string.IsNullOrEmpty(text))
+            {
+                todoListBox.Items.Add(text);
+                todoInputBox.Clear();
+                SaveTodoItems();
+            }
+        }
+
+        private void RemoveTodoButton_Click(object sender, EventArgs e)
+        {
+            if (todoListBox.SelectedItem != null)
+            {
+                todoListBox.Items.Remove(todoListBox.SelectedItem);
+                SaveTodoItems();
+            }
+        }
+
+        private void LoadTodoItems()
+        {
+            todoListBox.Items.Clear();
+            string todoFile = Path.Combine(currentRootFolder, "todo.txt");
+            if (System.IO.File.Exists(todoFile))
+            {
+                foreach (var line in System.IO.File.ReadAllLines(todoFile))
+                {
+                    if (!string.IsNullOrWhiteSpace(line))
+                        todoListBox.Items.Add(line.Trim());
+                }
+            }
+        }
+
+        private void SaveTodoItems()
+        {
+            string todoFile = Path.Combine(currentRootFolder, "todo.txt");
+            List<string> items = new List<string>();
+            foreach (var item in todoListBox.Items)
+                items.Add(item.ToString());
+            System.IO.File.WriteAllLines(todoFile, items);
         }
 
 
