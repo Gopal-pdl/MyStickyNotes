@@ -39,7 +39,7 @@ namespace MyStickyNotes
             // Set form properties
             this.BackColor = Color.White;
             this.Font = new Font("Segoe UI", 10F);
-            this.Text = "Sticky Notes Tools";
+            this.Text = "GPTools";
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimumSize = new Size(900, 600);
@@ -77,7 +77,7 @@ namespace MyStickyNotes
             };
             Label headerLabel = new Label
             {
-                Text = "Sticky Notes Tools",
+                Text = "GPTools",
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 AutoSize = false,
@@ -116,27 +116,14 @@ namespace MyStickyNotes
             notesButton.Click += (s, e2) => ShowNotesPanel();
             sidebarPanel.Controls.Add(notesButton);
 
-            // Manage Shortcuts button (second)
-            Button manageShortcutsButton = new Button
-            {
-                Text = "Manage Shortcuts",
-                Size = new Size(btnWidth, btnHeight),
-                Location = new Point(10, btnTop + btnHeight + 10), // Directly after Notes
-                BackColor = Color.FromArgb(63, 81, 181),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
-            };
-            manageShortcutsButton.FlatAppearance.BorderSize = 0;
-            manageShortcutsButton.Click += ManageShortcutsButton_Click;
-            sidebarPanel.Controls.Add(manageShortcutsButton);
+            
 
             // ToDo button (third, before Settings)
             Button todoButton = new Button
             {
                 Text = "ToDo",
                 Size = new Size(btnWidth, btnHeight),
-                Location = new Point(10, btnTop + (btnHeight + 10) * 2), // After Manage Shortcuts
+                Location = new Point(10, btnTop + btnHeight + 10), // After Manage Shortcuts
                 BackColor = Color.FromArgb(76, 175, 80),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -145,6 +132,21 @@ namespace MyStickyNotes
             todoButton.FlatAppearance.BorderSize = 0;
             todoButton.Click += TodoButton_Click;
             sidebarPanel.Controls.Add(todoButton);
+
+            // Manage Shortcuts button (second)
+            Button manageShortcutsButton = new Button
+            {
+                Text = "Manage Shortcuts",
+                Size = new Size(btnWidth, btnHeight),
+                Location = new Point(10, btnTop + (btnHeight + 10) * 2), // Directly after Notes
+                BackColor = Color.FromArgb(63, 81, 181),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
+            };
+            manageShortcutsButton.FlatAppearance.BorderSize = 0;
+            manageShortcutsButton.Click += ManageShortcutsButton_Click;
+            sidebarPanel.Controls.Add(manageShortcutsButton);
 
 
             // Settings button (third)
